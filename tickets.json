@@ -1,0 +1,17 @@
+[
+  {"id": "T1", "channel": "slack", "plan": "enterprise",
+   "subject": "Mobile data gone?",
+   "body": "Hey team, our mobile dashboards have been flat since Tuesday. Web looks fine. Did something change on your side?"},
+  {"id": "T2", "channel": "in_app", "plan": "paid",
+   "subject": "new-checkout flag not showing for anyone",
+   "body": "We set new-checkout to 100% for our staff but none of us get it. Flag is enabled. What are we missing?"},
+  {"id": "T3", "channel": "in_app", "plan": "paid",
+   "subject": "Unique users way too high",
+   "body": "PostHog says we had thousands of unique users this week. We have about 60 real customers logging in. Something is off."},
+  {"id": "T4", "channel": "slack", "plan": "enterprise",
+   "subject": "Error spike after release",
+   "body": "We shipped 2.4.0 yesterday and error tracking lit up. Is this a PostHog issue or ours?"},
+  {"id": "T5", "channel": "in_app", "plan": "free",
+   "subject": "Can't filter pageviews by URL",
+   "body": "A chunk of our pageviews have a blank URL so they vanish when we filter by page. Not sure where they come from."}
+]
