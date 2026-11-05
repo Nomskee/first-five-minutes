@@ -179,7 +179,8 @@ def _build_note(ticket, classification, results, shared_cause, classify_seconds,
     by_id = {result.id: result for result in results}
     github, docs = by_id["C9"], by_id["C10"]
 
-    title = f"{ticket.get('id', 'Ticket')}: {ticket.get('subject') or 'No subject'}"
+    # The API sends id as None when it isn't given, so .get()'s default wouldn't be enough here.
+    title = f"{ticket.get('id') or 'Ticket'}: {ticket.get('subject') or 'No subject'}"
     summary = f"**Area:** {classification['area']} | **Team:** {classification['team']} | **Severity:** {classification['severity']}"
     if classification["flag_key"]:
         summary += f" | **Flag:** `{classification['flag_key']}`"
