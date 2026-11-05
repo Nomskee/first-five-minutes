@@ -1,0 +1,44 @@
+{
+  // Start these from VS Code's Run and Debug panel. The Python ones need the Python Debugger extension.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Streamlit app",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "streamlit",
+      "args": ["run", "app.py"],
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "API",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": ["api:app", "--port", "8000"],
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      // The bot is built in Stage 7. Until then, this one fails to start because src/index.ts doesn't exist.
+      "name": "Slack bot",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["tsx", "src/index.ts"],
+      "cwd": "${workspaceFolder}/slack-bot",
+      "console": "integratedTerminal"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Run everything",
+      "configurations": ["Streamlit app", "API", "Slack bot"],
+      // Stopping one stops all three.
+      "stopAll": true
+    }
+  ]
+}
