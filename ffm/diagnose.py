@@ -10,6 +10,7 @@ from ffm.classify import _fetch_flag_keys, classify
 from ffm.config import CUSTOMER_PROJECT_ID
 from ffm.github_lookup import FIXED_SEARCH_WORDS, POSTHOG_SDK_NAMES, check_c9_github, check_c10_docs
 from ffm.posthog_api import clear_retried, was_retried
+from ffm.telemetry import log_diagnosis
 
 # How many checks can run at the same time.
 MAX_WORKERS = 4
@@ -259,8 +260,11 @@ def _build_note(ticket, classification, results, shared_cause, classify_seconds,
     return "\n".join(lines)
 
 
-def diagnose(ticket: dict) -> dict:
-    """Classify a ticket, run all the checks, and write up what they found."""
+def diagnose(ticket: dict, source: str = "app") -> dict:
+    """Classify a ticket, run all the checks, and write up what they found.
+
+    `source` says where the diagnosis was run from ("app" or "slack"). It's only used for telemetry.
+    """
     started = time.perf_counter()
 
     # Step 1: classify the ticket. A fresh lookup means new flag keys are known too.
@@ -283,13 +287,17 @@ def diagnose(ticket: dict) -> dict:
     shared_cause = _link_findings(results, area)
 
     # Step 5: write the note.
-    return {
+    diagnosis = {
         "ticket": ticket,
         "classification": classification,
         "results": results,
         "note_markdown": _build_note(ticket, classification, results, shared_cause, classify_seconds, anchor_seconds),
         "seconds": round(time.perf_counter() - started, 2),
     }
+
+    # Step 6: record the run in our internal PostHog project. It never raises, so it can't break the diagnosis.
+    log_diagnosis(diagnosis, source)
+    return diagnosis
 
 
 def _plain_value(value):

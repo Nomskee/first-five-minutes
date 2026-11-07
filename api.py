@@ -1,4 +1,6 @@
 """First Five Minutes as a web API. Start it with: uvicorn api:app"""
+from typing import Literal
+
 from fastapi import FastAPI
 from pydantic import BaseModel
 
@@ -15,6 +17,9 @@ class Ticket(BaseModel):
     plan: str = "paid"
     channel: str = "slack"
     id: str | None = None
+    # Where the request came from, for telemetry only. The Slack bot leaves it out; use "api" from the /docs page.
+    # Only these values are accepted, so a typo can't create a new source in the telemetry.
+    source: Literal["slack", "api", "app"] = "slack"
 
 
 @app.get("/health")
@@ -32,4 +37,5 @@ def diagnose_ticket(ticket: Ticket):
     Returns the ticket, its classification, each check's result and an internal note for the person handling it.
     The checks query PostHog and GitHub, so this usually takes a few seconds, and sometimes much longer.
     """
-    return to_json(diagnose(ticket.model_dump()))
+    # source isn't part of the ticket itself, so it's passed separately and left out of the ticket.
+    return to_json(diagnose(ticket.model_dump(exclude={"source"}), source=ticket.source))
