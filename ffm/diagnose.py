@@ -39,6 +39,10 @@ MAX_EVIDENCE_ROWS = 5
 
 FOOTER = "Internal note. Write the customer reply yourself."
 
+# Likely-cause lines that don't come from a check's own text.
+NO_PROBLEM_FOUND = "No check in this ticket's area found a problem."
+COULD_NOT_RUN = "This check couldn't run, so this part of the ticket wasn't checked."
+
 # Shown in the app and the note when classify() couldn't get the flag keys.
 FLAG_LOOKUP_WARNING = "Couldn't load feature flags, so the area and team may be wrong."
 
@@ -168,14 +172,34 @@ def _evidence_table(evidence):
     return lines
 
 
-def _build_note(ticket, classification, results, shared_cause, classify_seconds, anchor_seconds):
-    """Write the internal note for the person handling the ticket."""
-    checks = [result for result in results if result.id not in ("C9", "C10")]
-    relevant = [result for result in checks if result.relevant]
+def _problems(results):
+    """Return the relevant checks to explain, and the relevant checks that couldn't run."""
+    relevant = [result for result in results if result.relevant and result.id not in ("C9", "C10")]
     # Explain the failures. If nothing failed, explain the warnings instead.
     problems = [r for r in relevant if r.status == "fail"] or [r for r in relevant if r.status == "warn"]
     # A check that couldn't run hasn't cleared anything, so never report it as "no problem".
     could_not_run = [r for r in relevant if r.status == "error"]
+    return problems, could_not_run
+
+
+def _likely_cause(results, shared_cause):
+    """The likely cause, as a list of {"check", "text"}. "check" is None for a line that isn't about one check.
+
+    The note, the API and the Slack bot all show this, so they always agree.
+    """
+    problems, could_not_run = _problems(results)
+    items = [{"check": f"{r.id} {r.name}", "text": r.likely_cause} for r in problems]
+    items += [{"check": f"{r.id} {r.name}", "text": COULD_NOT_RUN} for r in could_not_run]
+    if shared_cause:
+        items.append({"check": None, "text": shared_cause})
+    return items or [{"check": None, "text": NO_PROBLEM_FOUND}]
+
+
+def _build_note(ticket, classification, results, shared_cause, classify_seconds, anchor_seconds):
+    """Write the internal note for the person handling the ticket."""
+    checks = [result for result in results if result.id not in ("C9", "C10")]
+    relevant = [result for result in checks if result.relevant]
+    problems, could_not_run = _problems(results)
     by_id = {result.id: result for result in results}
     github, docs = by_id["C9"], by_id["C10"]
 
@@ -189,12 +213,13 @@ def _build_note(ticket, classification, results, shared_cause, classify_seconds,
         lines += ["", f"**{FLAG_LOOKUP_WARNING}**"]
 
     lines += ["", "### Likely cause", ""]
-    if not problems and not could_not_run:
-        lines.append("No check in this ticket's area found a problem.")
-    lines += [f"- **{r.id} {r.name}:** {r.likely_cause}" for r in problems]
-    lines += [f"- **{r.id} {r.name}:** This check couldn't run, so this part of the ticket wasn't checked." for r in could_not_run]
-    if shared_cause:
-        lines.append(f"- **{shared_cause}**")
+    for item in _likely_cause(results, shared_cause):
+        if item["check"]:
+            lines.append(f"- **{item['check']}:** {item['text']}")
+        elif item["text"] == NO_PROBLEM_FOUND:
+            lines.append(NO_PROBLEM_FOUND)
+        else:
+            lines.append(f"- **{item['text']}**")
 
     lines += ["", "### Evidence", ""]
     if not relevant:
@@ -280,7 +305,13 @@ def _plain_value(value):
 
 
 def to_json(diagnosis):
-    """Return a copy of a diagnosis that the API can send as JSON, with each DataFrame as a list of rows."""
+    """Return a copy of a diagnosis that the API can send as JSON, with each DataFrame as a list of rows.
+
+    It also adds "likely_cause", the same lines as the note's Likely cause section, so callers don't need the rules.
+    """
+    area = diagnosis["classification"]["area"]
+    shared_cause = SHARED_ROOT_CAUSE if _is_linked(diagnosis["results"], area) else None
+    likely_cause = _likely_cause(diagnosis["results"], shared_cause)
     results = []
     for result in diagnosis["results"]:
         rows = [
@@ -288,4 +319,4 @@ def to_json(diagnosis):
             for row in result.evidence.to_dict("records")
         ]
         results.append({**vars(result), "evidence": rows})
-    return {**diagnosis, "results": results}
+    return {**diagnosis, "results": results, "likely_cause": likely_cause}
