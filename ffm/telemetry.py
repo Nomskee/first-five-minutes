@@ -44,6 +44,16 @@ def ticket_id(ticket):
     return "adhoc-" + hashlib.md5(body.encode("utf-8")).hexdigest()[:8]
 
 
+def ticket_key(ticket):
+    """A hash of the ticket's body, so the same ticket gets the same key wherever it was run.
+
+    T1 run from the app and the same text run from Slack have different ticket_ids, but the same key.
+    Spaces and line breaks are tidied first, so a copy with different spacing still matches.
+    """
+    body = " ".join((ticket.get("body") or "").split())
+    return hashlib.md5(body.encode("utf-8")).hexdigest()
+
+
 def _top_check(results):
     """The id of the first failed or warned check, or None. diagnose() has already put the most important first."""
     for result in results:
@@ -61,6 +71,7 @@ def log_diagnosis(diagnosis, source):
         ticket, results = diagnosis["ticket"], diagnosis["results"]
         classification = diagnosis["classification"]
         id = ticket_id(ticket)
+        key = ticket_key(ticket)
         client = _client()
 
         client.capture(
@@ -68,6 +79,7 @@ def log_diagnosis(diagnosis, source):
             distinct_id=DISTINCT_ID,
             properties={
                 "ticket_id": id,
+                "ticket_key": key,
                 "ticket_subject": ticket.get("subject") or "",
                 "area": classification["area"],
                 "severity": classification["severity"],
@@ -81,7 +93,17 @@ def log_diagnosis(diagnosis, source):
             client.capture(
                 "ffm_check_result",
                 distinct_id=DISTINCT_ID,
-                properties={"ticket_id": id, "check_id": result.id, "status": result.status, "relevant": result.relevant},
+                properties={
+                    "ticket_id": id,
+                    "ticket_key": key,
+                    "check_id": result.id,
+                    "check_name": result.name,
+                    "status": result.status,
+                    "relevant": result.relevant,
+                    # The Patterns page reads the latest of these back to draft an issue.
+                    "headline": result.headline,
+                    "likely_cause": result.likely_cause,
+                },
             )
 
         # Send now, instead of waiting for the background thread's next batch.

@@ -39,6 +39,9 @@ POSTHOG_PERSONAL_API_KEY = _required("POSTHOG_PERSONAL_API_KEY")
 # Optional: this is an empty string if it isn't set, and nothing raises an error.
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "").strip()
 
+# Optional: the GitHub account that owns the first-five-minutes repo. The Patterns page links to its issues.
+GITHUB_USERNAME = os.getenv("GITHUB_USERNAME", "").strip()
+
 # What check time windows are measured from: "latest_event" (the newest event in the project) or "now".
 # Optional: if it isn't set, we use latest_event.
 ANCHOR_MODE = os.getenv("ANCHOR_MODE", "").strip() or "latest_event"

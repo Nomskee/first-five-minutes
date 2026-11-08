@@ -8,6 +8,12 @@
       "port": 8501
     },
     {
+      "name": "streamlit-8502",
+      "runtimeExecutable": ".venv/Scripts/python.exe",
+      "runtimeArgs": ["-m", "streamlit", "run", "app.py", "--server.headless", "true", "--server.port", "8502", "--browser.gatherUsageStats", "false"],
+      "port": 8502
+    },
+    {
       "name": "api",
       "runtimeExecutable": ".venv/Scripts/python.exe",
       "runtimeArgs": ["-m", "uvicorn", "api:app", "--port", "8000"],
